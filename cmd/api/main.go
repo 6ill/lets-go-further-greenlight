@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/6ill/greenlight/internal/data"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -41,6 +42,7 @@ type Config struct {
 type Application struct {
 	config Config
 	logger *log.Logger
+	models data.Models
 }
 
 func main() {
@@ -81,6 +83,7 @@ func main() {
 	app := &Application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 	// Declare a HTTP server with some sensible timeout settings, which listens on the
 	// port provided in the config struct and uses the servemux we created above as the
