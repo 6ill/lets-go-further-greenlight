@@ -8,8 +8,11 @@ import (
 // The logError() method is a generic helper for logging an error message. Later in the
 // book we'll upgrade this to use structured logging, and record additional information
 // about the request including the HTTP method and URL.
-func (app *Application) logError(_ *http.Request, err error) {
-	app.logger.Print(err)
+func (app *Application) logError(r *http.Request, err error) {
+	app.logger.PrintError(err, map[string]string{
+		"request_method": r.Method,
+		"request_url": r.URL.String(),
+	})
 }
 
 // The errorResponse() method is a generic helper for sending JSON-formatted error

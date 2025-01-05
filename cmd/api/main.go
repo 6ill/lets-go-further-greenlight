@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/6ill/greenlight/internal/data"
+	"github.com/6ill/greenlight/internal/jsonlog"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -41,18 +43,18 @@ type Config struct {
 // logger, but it will grow to include a lot more as our build progresses.
 type Application struct {
 	config Config
-	logger *log.Logger
+	logger *jsonlog.Logger
 	models data.Models
 }
 
 func main() {
 	// Declare an instance of the config struct.
 	var cfg Config
-	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 	
 	err := godotenv.Load()
 	if err != nil {
-		logger.Fatal("Error loading .env file")
+		logger.PrintFatal(errors.New("error loading .env file"), nil)
 	}
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
@@ -66,7 +68,7 @@ func main() {
 	// prefixed with the current date and time.
 	db, err := openDB(cfg)
 	if err != nil {
-		logger.Fatal(err)
+		logger.PrintFatal(err, nil)
 	}
 
 	// Defer a call to db.Close() so that the connection pool is closed before the
@@ -75,7 +77,7 @@ func main() {
 
 	// Also log a message to say that the connection pool has been successfully
 	// established.
-	logger.Printf("database connection pool established")
+	logger.PrintInfo("database connection pool established", nil)
 
 
 	// Declare an instance of the application struct, containing the config struct and
@@ -94,11 +96,14 @@ func main() {
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
+		ErrorLog: log.New(logger, "", 0),
 	}
 	// Start the HTTP server.
-	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
+	logger.PrintInfo("starting serve", map[string]string{
+		"env": cfg.env, "address": srv.Addr,
+	})
 	err = srv.ListenAndServe()
-	logger.Fatal(err)
+	logger.PrintFatal(err, nil)
 }
 
 // The openDB() function returns a sql.DB connection pool.
