@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/6ill/greenlight/internal/validator"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -139,4 +141,47 @@ func (app *Application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 	}
 
 	return nil
+}
+
+// The readString() helper returns a string value from the query string, or the provided
+// default value if no matching key could be found.
+func (app *Application) readString(qs url.Values, key string, defaultValue string) string {
+	s := qs.Get(key)
+
+	// If no key exists (or the value is empty) then return the default value.
+	if s == "" {
+		return defaultValue
+	}
+
+	return s
+}
+
+// The readCSV() helper reads a string value from the query string and then splits it
+// into a slice on the comma character. If no matching key could be found, it returns
+// the provided default value.
+func (app *Application) readCSV(qs url.Values, key string, defaultValue []string) []string {
+	csv := qs.Get(key)
+	// If no key exists (or the value is empty) then return the default value.
+	if csv == "" {
+		return defaultValue
+	}
+
+	return strings.Split(csv, ",")
+}
+
+func (app *Application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
+	integer := qs.Get(key)
+
+	// If no key exists (or the value is empty) then return the default value.
+	if integer == "" {
+		return defaultValue
+	}
+
+	i, err := strconv.Atoi(integer)
+	if err != nil {
+		v.AddError(key, "must be integer value")
+		return defaultValue
+	}
+
+	return i
 }

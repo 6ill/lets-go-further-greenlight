@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/6ill/greenlight/internal/validator"
@@ -181,6 +182,66 @@ func (m MovieModel) Delete(id int64) error {
 	return nil
 }
 
+func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, Metadata, error) {
+	query := fmt.Sprintf(`
+		SELECT COUNT(1) OVER(), id, created_at, title, year, runtime, genres, version FROM movies
+		WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		AND (genres @> $2 OR $2 = '{}')
+		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4
+	`, filters.sortColumn(), filters.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	args := []any{title, pq.Array(genres), filters.limit(), filters.offset()}
+
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+
+	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
+	// before GetAll() returns.
+	defer rows.Close()
+
+	// Initialize an empty slice to hold the movie data.
+	movies := []*Movie{}
+
+	// Declare a totalRecords variable.
+	totalRecords := 0
+
+	for rows.Next() {
+		var movie Movie
+
+		// Scan the values from the row into the Movie struct. Again, note that we're
+		// using the pq.Array() adapter on the genres field here.
+		err := rows.Scan(
+			&totalRecords,
+			&movie.ID,
+			&movie.CreatedAt,
+			&movie.Title,
+			&movie.Year,
+			&movie.Runtime,
+			pq.Array(&movie.Genres),
+			&movie.Version,
+		)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+
+		movies = append(movies, &movie)
+	}
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	// When the rows.Next() loop has finished, call rows.Err() to retrieve any error
+	// that was encountered during the iteration.
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	return movies, metadata,nil
+}
+
 type MockMovieModel struct{}
 
 func (m MockMovieModel) Insert(movie *Movie) error {
@@ -198,4 +259,8 @@ func (m MockMovieModel) Update(movie *Movie) error {
 func (m MockMovieModel) Delete(id int64) error {
 	// Mock the action...
 	return nil
+}
+
+func (m MockMovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, Metadata, error) {
+	return nil, Metadata{}, nil
 }
