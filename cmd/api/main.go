@@ -5,9 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
-	"fmt"
-	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -31,10 +28,18 @@ type Config struct {
 	port int
 	env  string
 	db   struct {
-		dsn string
+		dsn          string
 		maxOpenConns int
 		maxIdleConns int
-		maxIdleTime string
+		maxIdleTime  string
+	}
+	// Add a new limiter struct containing fields for the requests-per-second and burst
+	// values, and a boolean field which we can use to enable/disable rate limiting
+	// altogether.
+	limiter struct {
+		rps     float64
+		burst   int
+		enabled bool
 	}
 }
 
@@ -51,7 +56,7 @@ func main() {
 	// Declare an instance of the config struct.
 	var cfg Config
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
-	
+
 	err := godotenv.Load()
 	if err != nil {
 		logger.PrintFatal(errors.New("error loading .env file"), nil)
@@ -62,7 +67,11 @@ func main() {
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
-	
+	// Create command line flags to read the setting values into the config struct.
+	// Notice that we use true as the default for the 'enabled' setting?
+	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum requests per second")
+	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
+	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 	flag.Parse()
 	// Initialize a new logger which writes messages to the standard out stream,
 	// prefixed with the current date and time.
@@ -79,7 +88,6 @@ func main() {
 	// established.
 	logger.PrintInfo("database connection pool established", nil)
 
-
 	// Declare an instance of the application struct, containing the config struct and
 	// the logger.
 	app := &Application{
@@ -87,23 +95,10 @@ func main() {
 		logger: logger,
 		models: data.NewModels(db),
 	}
-	// Declare a HTTP server with some sensible timeout settings, which listens on the
-	// port provided in the config struct and uses the servemux we created above as the
-	// handler.
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.port),
-		Handler:      app.routes(),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		ErrorLog: log.New(logger, "", 0),
+	err = app.Serve()
+	if err != nil {
+		logger.PrintFatal(err, nil)
 	}
-	// Start the HTTP server.
-	logger.PrintInfo("starting serve", map[string]string{
-		"env": cfg.env, "address": srv.Addr,
-	})
-	err = srv.ListenAndServe()
-	logger.PrintFatal(err, nil)
 }
 
 // The openDB() function returns a sql.DB connection pool.
@@ -118,7 +113,6 @@ func openDB(cfg Config) (*sql.DB, error) {
 	// Set the maximum number of open (in-use + idle) connections in the pool. Note that
 	// passing a value less than or equal to 0 will mean there is no limit.
 	db.SetMaxOpenConns(cfg.db.maxOpenConns)
-
 
 	// Set the maximum number of idle connections in the pool. Again, passing a value
 	// less than or equal to 0 will mean there is no limit.

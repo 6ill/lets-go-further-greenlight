@@ -27,7 +27,7 @@ func (app *Application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	err := app.writeJSON(w, status, env, nil)
 	if err != nil {
 		app.logError(r, err)
-		w.WriteHeader(500)
+		w.WriteHeader(status)
 	}
 }
 
@@ -68,4 +68,9 @@ func (app *Application) failedValidationResponse(w http.ResponseWriter, r *http.
 func (app *Application) editConflictResponse(w http.ResponseWriter, r *http.Request) {
 	message := "unable to update the record due to an edit conflict, please try again"
 	app.errorResponse(w, r, http.StatusConflict, message)
+}
+
+func (app *Application) rateLimitExceedResponse(w http.ResponseWriter, r *http.Request) {
+	message := "rate limit exceeded"
+	app.errorResponse(w, r, http.StatusTooManyRequests, message)
 }
