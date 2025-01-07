@@ -9,3 +9,5 @@ require (
 )
 
 require golang.org/x/time v0.9.0
+
+require golang.org/x/crypto v0.32.0 // indirect
