@@ -160,6 +160,7 @@ func (app *Application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	// any of the checks fail.
 	if data.ValidateMovie(v, movie); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
+		return
 	}
 
 	err = app.models.Movies.Update(movie)
