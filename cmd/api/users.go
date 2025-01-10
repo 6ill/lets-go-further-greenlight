@@ -58,6 +58,19 @@ func (app *Application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	var sendEmail = func () {
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+		if err != nil {
+			// Importantly, if there is an error sending the email then we use the
+			// app.logger.PrintError() helper to manage it, instead of the
+			// app.serverErrorResponse() helper like before.
+			app.logger.PrintError(err, nil)
+		}
+	}
+	// Use the background helper to execute an anonymous function that sends the welcome
+	// email.
+	app.background(sendEmail)
+
 	err = app.writeJSON(w, http.StatusCreated, Envelope{"user": user}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
