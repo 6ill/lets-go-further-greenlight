@@ -135,7 +135,7 @@ func (m MovieModel) Update(movie *Movie) error {
 		movie.ID,
 		movie.Version,
 	}
-	
+
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&movie.Version)
 	if err != nil {
 		switch {
@@ -168,7 +168,7 @@ func (m MovieModel) Delete(id int64) error {
 		return err
 	}
 
-	rowsAffected, err :=  result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 		return nil, Metadata{}, err
 	}
 
-	return movies, metadata,nil
+	return movies, metadata, nil
 }
 
 type MockMovieModel struct{}

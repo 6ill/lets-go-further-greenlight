@@ -147,7 +147,7 @@ func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 		return
 	}
-	
+
 	// If everything went successfully, then we delete all activation tokens for the
 	// user.
 	err = app.models.Tokens.DeleteAllForUser(data.ScopeActivation, user.ID)

@@ -67,7 +67,7 @@ func (app *Application) Serve() error {
 		app.logger.PrintInfo("completing background tasks", map[string]string{
 			"addr": srv.Addr,
 		})
-		
+
 		// Call Wait() to block until our WaitGroup counter is zero --- essentially
 		// blocking until the background goroutines have finished. Then we return nil on
 		// the shutdownError channel, to indicate that the shutdown completed without

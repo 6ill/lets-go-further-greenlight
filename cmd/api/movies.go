@@ -111,7 +111,7 @@ func (app *Application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		}
 		return
 	}
-	
+
 	// If the request contains an X-Expected-Version, verify that the movie version in the database
 	// matches the expected version specified in the header.
 	if r.Header.Get("X-Expected-Version") != "" {
@@ -120,7 +120,7 @@ func (app *Application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
-	
+
 	// Declare an input struct to hold the expected data from the client.
 	var input struct {
 		Title   *string       `json:"title"`
@@ -206,11 +206,11 @@ func (app *Application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 
 func (app *Application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title    string
-		Genres   []string
+		Title  string
+		Genres []string
 		data.Filters
 	}
-	
+
 	v := validator.New()
 
 	qs := r.URL.Query()
@@ -221,7 +221,7 @@ func (app *Application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 	input.Filters.Sort = app.readString(qs, "sort", "id")
 	input.Filters.SortSafelist = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
 
-	if  data.ValidateFilters(v, input.Filters); !v.Valid() {
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}

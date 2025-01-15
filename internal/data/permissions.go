@@ -52,7 +52,7 @@ func (m PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 	permissions := Permissions{}
 
 	for rows.Next() {
-		var permission string 
+		var permission string
 		err = rows.Scan(&permission)
 		if err != nil {
 			return nil, err
@@ -60,7 +60,7 @@ func (m PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 
 		permissions = append(permissions, permission)
 	}
-	
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (m PermissionModel) AddForUser(userID int64, codes ...string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	
+
 	_, err := m.DB.ExecContext(ctx, query, args...)
 	return err
 }
